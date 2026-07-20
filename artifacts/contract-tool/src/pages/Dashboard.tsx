@@ -255,8 +255,8 @@ export default function Dashboard() {
       </main>
 
       <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
-        <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden">
-          <div className="bg-primary/5 p-6 border-b border-slate-100">
+        <DialogContent className="sm:max-w-[500px] p-0 flex flex-col" style={{ maxHeight: '88vh' }}>
+          <div className="bg-primary/5 p-6 border-b border-slate-100 shrink-0">
             <DialogTitle className="font-serif text-2xl text-[#2b3e50]">New Employee</DialogTitle>
             <DialogDescription className="mt-1">
               Step {step} of 3 • {step === 1 ? 'Personal Details' : step === 2 ? 'Job Details' : 'Review'}
@@ -268,7 +268,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="p-6 max-h-[60vh] overflow-y-auto">
+          <div className="p-6 overflow-y-auto flex-1">
             {step === 1 && (
               <div className="space-y-5">
                 <div className="space-y-2">
@@ -416,7 +416,7 @@ export default function Dashboard() {
             )}
           </div>
 
-          <div className="p-6 pt-0 border-t border-slate-100 bg-slate-50/50 flex justify-between items-center mt-auto">
+          <div className="p-5 border-t border-slate-100 bg-slate-50/50 flex justify-between items-center shrink-0">
             {step > 1 ? (
               <Button variant="ghost" onClick={() => setStep(step - 1)}>
                 <ArrowLeft className="w-4 h-4 mr-2" /> Back
