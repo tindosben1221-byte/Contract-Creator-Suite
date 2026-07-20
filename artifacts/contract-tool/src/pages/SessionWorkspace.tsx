@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useParams } from 'wouter';
+import logoUrl from '@assets/Logo_Registered_.jpg_1784563137893.jpeg';
+import { useParams, Link } from 'wouter';
 import { useGetSession, useUpdateSession, useSaveSignature, getGetSessionQueryKey } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Input } from '@/components/ui/input';
@@ -12,10 +13,14 @@ import { SignatureCanvas } from '@/components/SignatureCanvas';
 import { PdfGenerator } from '@/components/PdfGenerator';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { Textarea } from '@/components/ui/textarea';
 import { 
-  CheckCircle2, Copy, ArrowLeft, PenTool, Link as LinkIcon, Save, Clock
+  CheckCircle2, Copy, ArrowLeft, PenTool, Link as LinkIcon, Save, Clock, FileEdit, User, FileText, ChevronRight,
+  Building
 } from 'lucide-react';
-import { Link } from 'wouter';
+import { format } from 'date-fns';
 
 export default function SessionWorkspace() {
   const params = useParams();
@@ -26,6 +31,7 @@ export default function SessionWorkspace() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [copySuccess, setCopySuccess] = useState(false);
+  const [activeTab, setActiveTab] = useState('employment');
 
   // Form states
   const [formData, setFormData] = useState({
@@ -85,7 +91,6 @@ export default function SessionWorkspace() {
           onSuccess: (updatedData) => {
             lastSavedData.current = { ...lastSavedData.current, [field]: currentValue };
             setSavingState('saved');
-            // Patch local cache instead of full invalidation to prevent UX stutter
             queryClient.setQueryData(getGetSessionQueryKey(token), (old: any) => 
               old ? { ...old, [field]: currentValue } : old
             );
@@ -103,7 +108,6 @@ export default function SessionWorkspace() {
 
   const handleSelectChange = (name: string, value: string) => {
     setFormData(prev => ({ ...prev, [name]: value }));
-    // Auto-trigger blur equivalent for selects
     setSavingState('saving');
     mutateRef.current(
       {
@@ -174,7 +178,7 @@ export default function SessionWorkspace() {
           <div className="w-16 h-16 bg-destructive/10 text-destructive rounded-full flex items-center justify-center mx-auto mb-4">
             <CheckCircle2 className="w-8 h-8" />
           </div>
-          <h2 className="text-xl font-bold text-slate-900 mb-2">Workspace Not Found</h2>
+          <h2 className="text-xl font-bold text-slate-900 mb-2 font-serif">Workspace Not Found</h2>
           <p className="text-slate-500 mb-6">The contract link you followed is invalid or has expired.</p>
           <Link href="/">
             <Button className="w-full">Return to Dashboard</Button>
@@ -184,38 +188,47 @@ export default function SessionWorkspace() {
     );
   }
 
-  const isEmploymentContract = session.contractType === 'employment_contract';
-  const allSigned = session.status === 'signed';
+  const safeVal = (val: string) => val ? <span className="font-medium text-[#0ABFBC] bg-[#0ABFBC]/10 px-1 rounded">{val}</span> : <span className="text-amber-500/50 bg-amber-500/10 px-1 border-b border-amber-500/50">_________________</span>;
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-800">
+    <div className="min-h-[100dvh] bg-[#f8fafc] flex flex-col font-sans text-slate-800">
       {/* Header */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-20 shadow-sm">
+        <div className="px-4 md:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link href="/">
-              <Button variant="ghost" size="icon" className="text-slate-500 hover:text-slate-900">
+              <Button variant="ghost" size="icon" className="text-slate-500 hover:text-slate-900 rounded-full">
                 <ArrowLeft className="w-5 h-5" />
               </Button>
             </Link>
             <Separator orientation="vertical" className="h-6" />
-            <div>
-              <h1 className="font-bold text-slate-900 leading-tight">
-                {isEmploymentContract ? 'Employment Contract' : 'Formal Offer'}
-              </h1>
-              <p className="text-xs text-slate-500">{session.employeeName || 'Unnamed Employee'}</p>
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold text-sm shadow-sm hidden md:flex">
+                {session.employeeName ? session.employeeName.charAt(0) : '?'}
+              </div>
+              <div>
+                <h1 className="font-bold text-[#2b3e50] leading-tight text-lg">
+                  {session.employeeName || 'Unnamed Employee'} Workspace
+                </h1>
+                <p className="text-xs text-slate-500 flex items-center">
+                  {session.position || 'No position set'} 
+                </p>
+              </div>
             </div>
-            {session.status === 'signed' ? (
-              <Badge className="ml-2 bg-emerald-500/10 text-emerald-700 border-none"><CheckCircle2 className="w-3 h-3 mr-1" /> Fully Signed</Badge>
-            ) : session.status === 'pending_signature' ? (
-              <Badge className="ml-2 bg-amber-500/10 text-amber-700 border-none"><Clock className="w-3 h-3 mr-1" /> Pending Signatures</Badge>
-            ) : (
-              <Badge className="ml-2 bg-slate-100 text-slate-600 border-none"><PenTool className="w-3 h-3 mr-1" /> Draft</Badge>
-            )}
+            
+            <div className="hidden md:flex ml-4">
+              {session.status === 'signed' ? (
+                <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200"><CheckCircle2 className="w-3 h-3 mr-1" /> Fully Signed</Badge>
+              ) : session.status === 'pending_signature' ? (
+                <Badge className="bg-amber-50 text-amber-700 border-amber-200"><Clock className="w-3 h-3 mr-1" /> Pending Signatures</Badge>
+              ) : (
+                <Badge className="bg-slate-100 text-slate-600 border-slate-200"><PenTool className="w-3 h-3 mr-1" /> Draft</Badge>
+              )}
+            </div>
           </div>
           
           <div className="flex items-center gap-4">
-            <div className="flex items-center text-xs font-medium px-3 py-1.5 rounded-full bg-slate-50 border border-slate-200">
+            <div className="hidden sm:flex items-center text-xs font-medium px-3 py-1.5 rounded-full bg-slate-50 border border-slate-200">
               {savingState === 'saving' ? (
                 <span className="text-amber-600 flex items-center gap-1.5"><div className="w-3 h-3 border-2 border-amber-600 border-t-transparent rounded-full animate-spin"/> Saving...</span>
               ) : savingState === 'saved' ? (
@@ -224,183 +237,310 @@ export default function SessionWorkspace() {
                 <span className="text-slate-400 flex items-center gap-1.5"><Save className="w-3 h-3"/> All saved</span>
               )}
             </div>
+
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="outline" className="border-slate-200 text-[#2b3e50] hover:bg-slate-50 hover:text-primary">
+                  <FileEdit className="w-4 h-4 mr-2" />
+                  Edit Details
+                </Button>
+              </SheetTrigger>
+              <SheetContent className="w-[400px] sm:w-[540px] overflow-y-auto border-l-0 shadow-2xl">
+                <SheetHeader className="mb-6">
+                  <SheetTitle className="font-serif text-2xl text-[#2b3e50]">Employee Details</SheetTitle>
+                  <SheetDescription>
+                    Update the fields below to populate the contract documents. Changes auto-save on blur.
+                  </SheetDescription>
+                </SheetHeader>
+                
+                <div className="space-y-6 pb-20">
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 pb-2">Personal Info</h3>
+                    <div className="space-y-2">
+                      <Label>Employee Full Name</Label>
+                      <Input name="employeeName" value={formData.employeeName} onChange={handleChange} onBlur={() => handleBlur('employeeName')} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Employee Address</Label>
+                      <Textarea name="employeeAddress" value={formData.employeeAddress} onChange={(e: any) => handleChange(e)} onBlur={() => handleBlur('employeeAddress')} className="resize-none" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Letter Date</Label>
+                      <Input type="date" name="letterDate" value={formData.letterDate} onChange={handleChange} onBlur={() => handleBlur('letterDate')} />
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 pb-2">Job Details</h3>
+                    <div className="space-y-2">
+                      <Label>Position / Job Title</Label>
+                      <Input name="position" value={formData.position} onChange={handleChange} onBlur={() => handleBlur('position')} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Employment Status</Label>
+                      <Select value={formData.employmentStatus} onValueChange={(val) => handleSelectChange('employmentStatus', val)}>
+                        <SelectTrigger><SelectValue placeholder="Select status" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Permanent">Permanent</SelectItem>
+                          <SelectItem value="Fixed Term">Fixed Term</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Start Date</Label>
+                      <Input type="date" name="startDate" value={formData.startDate} onChange={handleChange} onBlur={() => handleBlur('startDate')} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Place of Work</Label>
+                      <Input name="placeOfWork" value={formData.placeOfWork} onChange={handleChange} onBlur={() => handleBlur('placeOfWork')} />
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 pb-2">Compensation</h3>
+                    <div className="space-y-2">
+                      <Label>Monthly Salary</Label>
+                      <Input name="monthlySalary" value={formData.monthlySalary} onChange={handleChange} onBlur={() => {
+                        handleBlur('monthlySalary');
+                        if (formData.monthlySalary && !formData.annualSalary) {
+                          const num = parseFloat(formData.monthlySalary.replace(/[^0-9.]/g, ''));
+                          if (!isNaN(num)) {
+                            const annual = `R ${(num * 12).toLocaleString('en-ZA', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+                            setFormData(prev => ({...prev, annualSalary: annual}));
+                            mutateRef.current({ id: token, data: { annualSalary: annual } });
+                          }
+                        }
+                      }} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Annual Salary</Label>
+                      <Input name="annualSalary" value={formData.annualSalary} onChange={handleChange} onBlur={() => handleBlur('annualSalary')} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Immediate Supervisor</Label>
+                      <Input name="supervisor" value={formData.supervisor} onChange={handleChange} onBlur={() => handleBlur('supervisor')} />
+                    </div>
+                  </div>
+                </div>
+              </SheetContent>
+            </Sheet>
           </div>
         </div>
       </header>
 
-      <main className="flex-1 max-w-7xl mx-auto w-full p-4 md:p-6 lg:p-8 flex flex-col lg:flex-row gap-8">
+      <main className="flex-1 w-full max-w-[1600px] mx-auto p-4 md:p-6 flex flex-col lg:flex-row gap-6 h-[calc(100vh-64px)]">
         
-        {/* Left Column: Form Details */}
-        <div className="flex-1 space-y-6">
-          <Card className="border-slate-200 shadow-sm">
-            <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center rounded-t-xl">
-              <h2 className="text-lg font-bold text-slate-900 font-serif">Contract Details</h2>
+        {/* Left Column: Documents Preview (60%) */}
+        <div className="flex-1 lg:w-3/5 h-full flex flex-col min-h-0 bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
+            <div className="border-b border-slate-100 bg-slate-50/50 p-2">
+              <TabsList className="grid w-full grid-cols-2 max-w-md mx-auto">
+                <TabsTrigger value="employment">Employment Contract</TabsTrigger>
+                <TabsTrigger value="offer">Formal Offer</TabsTrigger>
+              </TabsList>
             </div>
             
-            <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
-              <div className="space-y-2 col-span-1 md:col-span-2">
-                <Label htmlFor="employeeName">Employee Full Name</Label>
-                <Input 
-                  id="employeeName" 
-                  name="employeeName"
-                  value={formData.employeeName} 
-                  onChange={handleChange}
-                  onBlur={() => handleBlur('employeeName')}
-                  className="bg-slate-50 border-slate-200 focus-visible:ring-primary"
-                />
-              </div>
+            <div className="flex-1 overflow-y-auto bg-slate-100 p-4 md:p-8 custom-scrollbar">
               
-              <div className="space-y-2 col-span-1 md:col-span-2">
-                <Label htmlFor="employeeAddress">Employee Address</Label>
-                <textarea 
-                  id="employeeAddress" 
-                  name="employeeAddress"
-                  value={formData.employeeAddress} 
-                  onChange={(e: any) => handleChange(e)}
-                  onBlur={() => handleBlur('employeeAddress')}
-                  className="flex min-h-[80px] w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-                />
-              </div>
+              <TabsContent value="employment" className="mt-0 h-full">
+                <div className="bg-white max-w-[800px] mx-auto min-h-[1000px] shadow-md border border-slate-200 p-8 md:p-12 mb-8">
+                  <div className="flex items-center gap-4 mb-8 border-b-2 border-primary pb-4">
+                    <img src={logoUrl} alt="Logo" className="h-16 w-auto" />
+                    <div>
+                      <h2 className="text-xl font-bold text-[#2b3e50] tracking-tight">DUNWELL YOUTH PRIORITY CLINIC</h2>
+                      <p className="text-sm text-slate-500">Executive Healthcare and Wellness<br/>Johannesburg, South Africa</p>
+                    </div>
+                  </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="letterDate">Letter Date</Label>
-                <Input 
-                  id="letterDate" 
-                  name="letterDate"
-                  type="date"
-                  value={formData.letterDate} 
-                  onChange={handleChange}
-                  onBlur={() => handleBlur('letterDate')}
-                  className="bg-slate-50 border-slate-200"
-                />
-              </div>
+                  <div className="space-y-6 text-[15px] leading-relaxed text-slate-700">
+                    <h1 className="text-center font-bold text-xl text-[#2b3e50]">EMPLOYMENT CONTRACT</h1>
+                    
+                    <div className="font-medium text-[#2b3e50]">
+                      {safeVal(formData.employeeName)}<br/>
+                      {safeVal(formData.employeeAddress)}
+                    </div>
+                    
+                    <div>{safeVal(formData.letterDate)}</div>
+                    
+                    <div>Dear {safeVal(formData.employeeName)},</div>
+                    
+                    <p>
+                      We have pleasure in confirming our offer of {safeVal(formData.employmentStatus)} employment with DUNWELL EXECUTIVE HEALTHCARE AND WELLNESS (herein referred to as "DEHW") in the position of {safeVal(formData.position)}, commencing on {safeVal(formData.startDate)}. This position is {safeVal(formData.employmentStatus)} and ongoing, subject to the terms and conditions outlined in this employment contract. This contract is subject to a favourable report on verification of your Personal Credentials.
+                    </p>
 
-              <div className="space-y-2">
-                <Label htmlFor="startDate">Start Date</Label>
-                <Input 
-                  id="startDate" 
-                  name="startDate"
-                  type="date"
-                  value={formData.startDate} 
-                  onChange={handleChange}
-                  onBlur={() => handleBlur('startDate')}
-                  className="bg-slate-50 border-slate-200"
-                />
-              </div>
+                    <p>The terms and conditions of such employment are set out below:</p>
+                    <ul className="list-disc pl-6 space-y-2">
+                      <li>You will be reporting to the {safeVal(formData.supervisor)}.</li>
+                      <li>You will have no expectation, nor does the employer create any expectation that your contract would be extended past the above-mentioned fixed period. No additional discharge benefits, severance and/or related payments will be due on termination.</li>
+                      <li>You shall be bound by the terms and conditions of service as stated in the DEHW Program Policy & Procedure Manual and the Employee handbook.</li>
+                    </ul>
 
-              <div className="space-y-2">
-                <Label htmlFor="position">Position / Job Title</Label>
-                <Input 
-                  id="position" 
-                  name="position"
-                  value={formData.position} 
-                  onChange={handleChange}
-                  onBlur={() => handleBlur('position')}
-                  className="bg-slate-50 border-slate-200"
-                />
-              </div>
+                    <div>
+                      <h3 className="font-bold text-primary border-b border-primary/20 pb-1 mt-8 mb-3 text-sm uppercase tracking-wider">Article 1: Job Description</h3>
+                      <p>Your roles and responsibilities are outlined in your job description. Your job description will be fully discussed with you by the {safeVal(formData.supervisor)} to whom you report.</p>
+                    </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="employmentStatus">Employment Status</Label>
-                <Select value={formData.employmentStatus} onValueChange={(val) => handleSelectChange('employmentStatus', val)}>
-                  <SelectTrigger className="bg-slate-50 border-slate-200">
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Permanent">Permanent</SelectItem>
-                    <SelectItem value="Fixed Term">Fixed Term</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+                    <div>
+                      <h3 className="font-bold text-primary border-b border-primary/20 pb-1 mt-8 mb-3 text-sm uppercase tracking-wider">Article 2: Remuneration</h3>
+                      <p>Your remuneration shall consist of a gross consolidated salary of:<br/>
+                      {safeVal(formData.annualSalary)} per annum; or<br/>
+                      {safeVal(formData.monthlySalary)} per month.</p>
+                    </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="monthlySalary">Monthly Salary</Label>
-                <Input 
-                  id="monthlySalary" 
-                  name="monthlySalary"
-                  placeholder="e.g. R 9,500.00"
-                  value={formData.monthlySalary} 
-                  onChange={handleChange}
-                  onBlur={() => {
-                    handleBlur('monthlySalary');
-                    // Auto-compute annual if empty
-                    if (formData.monthlySalary && !formData.annualSalary) {
-                      const numericVal = parseFloat(formData.monthlySalary.replace(/[^0-9.]/g, ''));
-                      if (!isNaN(numericVal)) {
-                        const annual = `R ${(numericVal * 12).toLocaleString('en-ZA', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-                        setFormData(prev => ({...prev, annualSalary: annual}));
-                        mutateRef.current({ id: token, data: { annualSalary: annual } });
-                      }
-                    }
-                  }}
-                  className="bg-slate-50 border-slate-200"
-                />
-              </div>
+                    <div>
+                      <h3 className="font-bold text-primary border-b border-primary/20 pb-1 mt-8 mb-3 text-sm uppercase tracking-wider">Article 7: Place of Work</h3>
+                      <p>Your place of work is situated at {safeVal(formData.placeOfWork)}.</p>
+                    </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="annualSalary">Annual Salary</Label>
-                <Input 
-                  id="annualSalary" 
-                  name="annualSalary"
-                  placeholder="e.g. R 114,000.00"
-                  value={formData.annualSalary} 
-                  onChange={handleChange}
-                  onBlur={() => handleBlur('annualSalary')}
-                  className="bg-slate-50 border-slate-200"
-                />
-              </div>
+                    <div className="pt-12 mt-12 border-t border-slate-200">
+                      <p className="mb-8">We take pleasure in welcoming you to the DEHW team and look forward to working with you.</p>
+                      
+                      <div className="grid grid-cols-2 gap-8 mt-12">
+                        <div>
+                          <div className="text-sm font-bold text-slate-400 mb-8">RECOMMENDED BY:</div>
+                          <div className="border-b-2 border-dashed border-slate-300 relative h-12 flex items-end justify-center">
+                            {session.projectManagerSignature ? (
+                              <img src={session.projectManagerSignature} className="max-h-16 absolute bottom-0 mix-blend-multiply" alt="Signature"/>
+                            ) : <span className="text-slate-300 text-sm italic absolute bottom-1">Project Manager Signature</span>}
+                          </div>
+                          <div className="mt-2 text-sm text-slate-600">
+                            <strong>Project Manager</strong><br/>
+                            Date: {session.projectManagerSignedAt ? format(new Date(session.projectManagerSignedAt), "dd MMM yyyy") : '___'}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-sm font-bold text-slate-400 mb-8">APPROVED BY:</div>
+                          <div className="border-b-2 border-dashed border-slate-300 relative h-12 flex items-end justify-center">
+                            {session.directorSignature ? (
+                              <img src={session.directorSignature} className="max-h-16 absolute bottom-0 mix-blend-multiply" alt="Signature"/>
+                            ) : <span className="text-slate-300 text-sm italic absolute bottom-1">Director Signature</span>}
+                          </div>
+                          <div className="mt-2 text-sm text-slate-600">
+                            <strong>Director</strong><br/>
+                            Date: {session.directorSignedAt ? format(new Date(session.directorSignedAt), "dd MMM yyyy") : '___'}
+                          </div>
+                        </div>
+                      </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="supervisor">Immediate Supervisor</Label>
-                <Input 
-                  id="supervisor" 
-                  name="supervisor"
-                  value={formData.supervisor} 
-                  onChange={handleChange}
-                  onBlur={() => handleBlur('supervisor')}
-                  className="bg-slate-50 border-slate-200"
-                />
-              </div>
+                      <div className="mt-20">
+                        <h2 className="text-center font-bold text-lg mb-8 uppercase">Acceptance Clause</h2>
+                        <p className="mb-8">I hereby accept and understand the conditions of employment as set out in this offer of fixed term employment.</p>
+                        
+                        <div className="grid grid-cols-2 gap-8">
+                          <div>
+                            <div className="border-b-2 border-dashed border-slate-300 relative h-12 flex items-end justify-center">
+                              {session.employeeSignature ? (
+                                <img src={session.employeeSignature} className="max-h-16 absolute bottom-0 mix-blend-multiply" alt="Signature"/>
+                              ) : <span className="text-slate-300 text-sm italic absolute bottom-1">Employee Signature</span>}
+                            </div>
+                            <div className="mt-2 text-sm text-slate-600">
+                              <strong>Employee:</strong> {safeVal(formData.employeeName)}<br/>
+                              Date: {session.employeeSignedAt ? format(new Date(session.employeeSignedAt), "dd MMM yyyy") : '___'}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="border-b-2 border-dashed border-slate-300 relative h-12 flex items-end justify-center">
+                              {session.witnessSignature ? (
+                                <img src={session.witnessSignature} className="max-h-16 absolute bottom-0 mix-blend-multiply" alt="Signature"/>
+                              ) : <span className="text-slate-300 text-sm italic absolute bottom-1">Witness Signature</span>}
+                            </div>
+                            <div className="mt-2 text-sm text-slate-600">
+                              <strong>Witness:</strong> {safeVal(session.witnessName || '')}<br/>
+                              Date: {session.witnessSignedAt ? format(new Date(session.witnessSignedAt), "dd MMM yyyy") : '___'}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </TabsContent>
 
-              <div className="space-y-2">
-                <Label htmlFor="placeOfWork">Place of Work</Label>
-                <Input 
-                  id="placeOfWork" 
-                  name="placeOfWork"
-                  value={formData.placeOfWork} 
-                  onChange={handleChange}
-                  onBlur={() => handleBlur('placeOfWork')}
-                  className="bg-slate-50 border-slate-200"
-                />
-              </div>
+              <TabsContent value="offer" className="mt-0 h-full">
+                <div className="bg-white max-w-[800px] mx-auto min-h-[1000px] shadow-md border border-slate-200 p-8 md:p-12 mb-8">
+                  <div className="flex items-center gap-4 mb-8 border-b-2 border-primary pb-4">
+                    <img src={logoUrl} alt="Logo" className="h-16 w-auto" />
+                    <div>
+                      <h2 className="text-xl font-bold text-[#2b3e50] tracking-tight">DUNWELL YOUTH PRIORITY CLINIC</h2>
+                      <p className="text-sm text-slate-500">Executive Healthcare and Wellness<br/>Johannesburg, South Africa</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-6 text-[15px] leading-relaxed text-slate-700">
+                    <h1 className="text-center font-bold text-xl text-[#2b3e50] mb-8">FORMAL OFFER OF EMPLOYMENT</h1>
+                    
+                    <div className="grid grid-cols-[200px_1fr] gap-3 bg-slate-50 p-6 rounded border border-slate-100 mb-8">
+                      <div className="font-bold">Employee Name:</div><div>{safeVal(formData.employeeName)}</div>
+                      <div className="font-bold">Offer Date:</div><div>{safeVal(formData.letterDate)}</div>
+                      <div className="font-bold">Position Title:</div><div>{safeVal(formData.position)}</div>
+                      <div className="font-bold">Employment Status:</div><div>{safeVal(formData.employmentStatus)}</div>
+                      <div className="font-bold">Monthly Compensation:</div><div>{safeVal(formData.monthlySalary)}</div>
+                      <div className="font-bold">Start Date:</div><div>{safeVal(formData.startDate)}</div>
+                      <div className="font-bold">Immediate Supervisor:</div><div>{safeVal(formData.supervisor)}</div>
+                    </div>
+                    
+                    <div>Dear {safeVal(formData.employeeName)},</div>
+                    
+                    <p>
+                      We are pleased to extend you a formal offer of employment with Dunwell Executive Healthcare and Wellness in the position of {safeVal(formData.position)} based in {safeVal(formData.placeOfWork)}.
+                    </p>
+
+                    <h3 className="font-bold text-primary border-b border-primary/20 pb-1 mt-8 mb-3 text-sm uppercase tracking-wider">Acceptance of Offer</h3>
+                    <p>I agree by signing below that I understand and agree to the terms and conditions of this offer extended by Dunwell Executive Healthcare and Wellness and no other terms apply.</p>
+                    
+                    <div className="w-64 mt-6">
+                      <div className="border-b-2 border-dashed border-slate-300 relative h-12 flex items-end justify-center">
+                        {session.employeeSignature ? (
+                          <img src={session.employeeSignature} className="max-h-16 absolute bottom-0 mix-blend-multiply" alt="Signature"/>
+                        ) : <span className="text-slate-300 text-sm italic absolute bottom-1">Employee Signature</span>}
+                      </div>
+                      <div className="mt-2 text-sm text-slate-600">
+                        Date: {session.employeeSignedAt ? format(new Date(session.employeeSignedAt), "dd MMM yyyy") : '___'}
+                      </div>
+                    </div>
+
+                    <h3 className="font-bold text-primary border-b border-primary/20 pb-1 mt-12 mb-3 text-sm uppercase tracking-wider">Company Approval</h3>
+                    <div className="w-64 mt-6">
+                      <div className="border-b-2 border-dashed border-slate-300 relative h-12 flex items-end justify-center">
+                        {session.companySignature ? (
+                          <img src={session.companySignature} className="max-h-16 absolute bottom-0 mix-blend-multiply" alt="Signature"/>
+                        ) : <span className="text-slate-300 text-sm italic absolute bottom-1">Company Signature</span>}
+                      </div>
+                      <div className="mt-2 text-sm text-slate-600">
+                        Date: {session.companySignedAt ? format(new Date(session.companySignedAt), "dd MMM yyyy") : '___'}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </TabsContent>
             </div>
-          </Card>
+          </Tabs>
         </div>
 
-        {/* Right Column: Sharing & Signatures */}
-        <div className="w-full lg:w-96 flex flex-col gap-6">
+        {/* Right Column: Controls (40%) */}
+        <div className="w-full lg:w-2/5 flex flex-col gap-4 h-full min-h-0">
           
           {/* Share Block */}
-          <Card className="border-primary/20 shadow-sm bg-primary/5">
-            <div className="p-5 flex flex-col gap-3">
-              <div className="flex items-center gap-2 text-primary font-semibold">
-                <LinkIcon className="w-4 h-4" />
-                <h3>Share for Signatures</h3>
+          <Card className="border-primary/20 shadow-sm bg-primary/5 flex-shrink-0">
+            <div className="p-4 flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-primary font-semibold">
+                  <LinkIcon className="w-4 h-4" />
+                  <h3>Share Workspace</h3>
+                </div>
+                <Badge variant="outline" className="bg-white">Signatures Required</Badge>
               </div>
-              <p className="text-sm text-slate-600">
-                Anyone with this link can view and sign the contract.
-              </p>
               <div className="flex gap-2">
                 <Input 
                   readOnly 
                   value={window.location.href} 
-                  className="bg-white border-primary/20 text-xs text-slate-600 focus-visible:ring-primary/30"
+                  className="bg-white border-primary/20 text-xs text-slate-600 focus-visible:ring-primary/30 h-9"
                 />
                 <Button 
                   onClick={handleCopyLink} 
                   size="icon" 
                   variant="outline"
-                  className={copySuccess ? "bg-emerald-50 text-emerald-600 border-emerald-200" : "bg-white"}
+                  className={`h-9 w-9 flex-shrink-0 ${copySuccess ? "bg-emerald-50 text-emerald-600 border-emerald-200" : "bg-white hover:bg-slate-50"}`}
                 >
                   {copySuccess ? <CheckCircle2 className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                 </Button>
@@ -409,91 +549,92 @@ export default function SessionWorkspace() {
           </Card>
 
           {/* Signatures Block */}
-          <Card className="border-slate-200 shadow-sm flex-1 flex flex-col">
-            <div className="p-5 border-b border-slate-100 bg-slate-50/50">
-              <h2 className="text-lg font-bold text-slate-900 font-serif">Signatures</h2>
-              <p className="text-xs text-slate-500 mt-1">Please sign within the boxes below.</p>
+          <Card className="border-slate-200 shadow-sm flex-1 flex flex-col min-h-0 overflow-hidden">
+            <div className="p-4 border-b border-slate-100 bg-white z-10 flex-shrink-0">
+              <h2 className="text-lg font-bold text-[#2b3e50] font-serif flex items-center">
+                <PenTool className="w-4 h-4 mr-2 text-slate-400" />
+                Capture Signatures
+              </h2>
+              <p className="text-xs text-slate-500 mt-1">Signatures sync across both documents automatically.</p>
             </div>
             
-            <div className="p-5 flex-1 space-y-6 overflow-y-auto">
-              {isEmploymentContract ? (
-                <>
-                  <div className="space-y-4">
-                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider">Employee & Witness</h3>
-                    <SignatureCanvas 
-                      label="Employee Signature" 
-                      role="employee"
-                      onSign={onSign('employee')}
-                      existingSignature={session.employeeSignature}
-                      existingDate={session.employeeSignedAt}
-                    />
-                    <SignatureCanvas 
-                      label="Witness Signature" 
-                      role="witness"
-                      requireName={true}
-                      signerName={session.witnessName}
-                      onSign={onSign('witness')}
-                      existingSignature={session.witnessSignature}
-                      existingDate={session.witnessSignedAt}
-                    />
-                  </div>
-                  
-                  <Separator />
-                  
-                  <div className="space-y-4">
-                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider">Internal Approval</h3>
-                    <SignatureCanvas 
-                      label="Project Manager (Recommended by)" 
-                      role="project_manager"
-                      onSign={onSign('project_manager')}
-                      existingSignature={session.projectManagerSignature}
-                      existingDate={session.projectManagerSignedAt}
-                    />
-                    <SignatureCanvas 
-                      label="Director (Approved by)" 
-                      role="director"
-                      onSign={onSign('director')}
-                      existingSignature={session.directorSignature}
-                      existingDate={session.directorSignedAt}
-                    />
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="space-y-4">
-                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider">Employee Acceptance</h3>
-                    <SignatureCanvas 
-                      label="Employee Signature (Acceptance of Offer)" 
-                      role="employee"
-                      onSign={onSign('employee')}
-                      existingSignature={session.employeeSignature}
-                      existingDate={session.employeeSignedAt}
-                    />
-                  </div>
-                  
-                  <Separator />
-                  
-                  <div className="space-y-4">
-                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider">Company Approval</h3>
-                    <SignatureCanvas 
-                      label="Company / DEHW" 
-                      role="company"
-                      onSign={onSign('company')}
-                      existingSignature={session.companySignature}
-                      existingDate={session.companySignedAt}
-                    />
-                  </div>
-                </>
-              )}
+            <div className="p-4 flex-1 overflow-y-auto space-y-6 custom-scrollbar bg-slate-50/50">
+              <div className="space-y-4">
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center">
+                  <User className="w-3 h-3 mr-1" /> Employee & Witness
+                </h3>
+                <SignatureCanvas 
+                  label="Employee Signature" 
+                  role="employee"
+                  onSign={onSign('employee')}
+                  existingSignature={session.employeeSignature}
+                  existingDate={session.employeeSignedAt}
+                />
+                <SignatureCanvas 
+                  label="Witness Signature" 
+                  role="witness"
+                  requireName={true}
+                  signerName={session.witnessName}
+                  onSign={onSign('witness')}
+                  existingSignature={session.witnessSignature}
+                  existingDate={session.witnessSignedAt}
+                />
+              </div>
+              
+              <Separator />
+              
+              <div className="space-y-4">
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center">
+                  <Building className="w-3 h-3 mr-1" /> Internal Approval
+                </h3>
+                <SignatureCanvas 
+                  label="Project Manager" 
+                  role="project_manager"
+                  onSign={onSign('project_manager')}
+                  existingSignature={session.projectManagerSignature}
+                  existingDate={session.projectManagerSignedAt}
+                />
+                <SignatureCanvas 
+                  label="Director" 
+                  role="director"
+                  onSign={onSign('director')}
+                  existingSignature={session.directorSignature}
+                  existingDate={session.directorSignedAt}
+                />
+                <SignatureCanvas 
+                  label="Company Representative" 
+                  role="company"
+                  onSign={onSign('company')}
+                  existingSignature={session.companySignature}
+                  existingDate={session.companySignedAt}
+                />
+              </div>
             </div>
 
-            <div className="p-5 border-t border-slate-100 bg-slate-50 mt-auto">
-              <PdfGenerator session={session} />
+            <div className="p-4 border-t border-slate-100 bg-white space-y-3 flex-shrink-0">
+              <PdfGenerator session={session} type="employment_contract" />
+              <PdfGenerator session={session} type="formal_offer" />
             </div>
           </Card>
 
         </div>
       </main>
+
+      <style dangerouslySetInnerHTML={{__html: `
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent; 
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: #cbd5e1; 
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: #94a3b8; 
+        }
+      `}} />
     </div>
   );
 }
