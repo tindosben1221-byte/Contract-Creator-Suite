@@ -42,6 +42,7 @@ export const ListSessionsResponseItem = zod.object({
   "witnessSignedAt": zod.string().nullish(),
   "projectManagerSignature": zod.string().nullish(),
   "projectManagerSignedAt": zod.string().nullish(),
+  "projectManagerName": zod.string().nullish(),
   "directorSignature": zod.string().nullish(),
   "directorSignedAt": zod.string().nullish(),
   "companySignature": zod.string().nullish(),
@@ -91,6 +92,7 @@ export const CreateSessionResponse = zod.object({
   "witnessSignedAt": zod.string().nullish(),
   "projectManagerSignature": zod.string().nullish(),
   "projectManagerSignedAt": zod.string().nullish(),
+  "projectManagerName": zod.string().nullish(),
   "directorSignature": zod.string().nullish(),
   "directorSignedAt": zod.string().nullish(),
   "companySignature": zod.string().nullish(),
@@ -129,6 +131,7 @@ export const GetSessionResponse = zod.object({
   "witnessSignedAt": zod.string().nullish(),
   "projectManagerSignature": zod.string().nullish(),
   "projectManagerSignedAt": zod.string().nullish(),
+  "projectManagerName": zod.string().nullish(),
   "directorSignature": zod.string().nullish(),
   "directorSignedAt": zod.string().nullish(),
   "companySignature": zod.string().nullish(),
@@ -136,6 +139,16 @@ export const GetSessionResponse = zod.object({
   "createdAt": zod.string(),
   "updatedAt": zod.string()
 })
+
+
+/**
+ * @summary Delete a contract session
+ */
+export const DeleteSessionParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const DeleteSessionResponse = zod.void()
 
 
 /**
@@ -181,6 +194,7 @@ export const UpdateSessionResponse = zod.object({
   "witnessSignedAt": zod.string().nullish(),
   "projectManagerSignature": zod.string().nullish(),
   "projectManagerSignedAt": zod.string().nullish(),
+  "projectManagerName": zod.string().nullish(),
   "directorSignature": zod.string().nullish(),
   "directorSignedAt": zod.string().nullish(),
   "companySignature": zod.string().nullish(),
@@ -226,6 +240,7 @@ export const SaveSignatureResponse = zod.object({
   "witnessSignedAt": zod.string().nullish(),
   "projectManagerSignature": zod.string().nullish(),
   "projectManagerSignedAt": zod.string().nullish(),
+  "projectManagerName": zod.string().nullish(),
   "directorSignature": zod.string().nullish(),
   "directorSignedAt": zod.string().nullish(),
   "companySignature": zod.string().nullish(),

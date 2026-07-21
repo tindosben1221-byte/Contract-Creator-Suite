@@ -29,25 +29,24 @@ export function PdfGenerator({ session, type }: PdfGeneratorProps) {
     const PH = doc.internal.pageSize.getHeight();  // 297 mm
     const M  = 20;   // side margin
     const FOOTER_H = 14;
+    const HEADER_H = 32;
+    const CONTENT_BOTTOM = PH - FOOTER_H - 12;  // safe bottom boundary for content
     const BODY_W = PW - M * 2;
     let Y = M;
 
     // ── Helpers ────────────────────────────────────────────────────────────────
     const safe = (v?: string | null) => v?.trim() || '____________________';
 
-    const rgb = (c: readonly [number, number, number]) =>
-      ({ r: c[0], g: c[1], b: c[2] });
-
     const setFill  = (c: readonly [number,number,number]) => doc.setFillColor(c[0], c[1], c[2]);
     const setStroke= (c: readonly [number,number,number]) => doc.setDrawColor(c[0], c[1], c[2]);
     const setColor = (c: readonly [number,number,number]) => doc.setTextColor(c[0], c[1], c[2]);
 
     const needPage = (h: number) => {
-      if (Y + h > PH - FOOTER_H - 6) {
+      if (Y + h > CONTENT_BOTTOM) {
         footer();
         doc.addPage();
         pageNum++;
-        Y = M;
+        Y = HEADER_H + 10;
         header();
       }
     };
@@ -71,31 +70,36 @@ export function PdfGenerator({ session, type }: PdfGeneratorProps) {
     // ── Footer ────────────────────────────────────────────────────────────────
     const footer = () => {
       const fy = PH - FOOTER_H;
-      // yellow stripe
+
+      // Full yellow background
       setFill(YELLOW);
       doc.rect(0, fy, PW, FOOTER_H, 'F');
-      // navy left block
+
+      // Navy left block (wide enough for clinic name)
+      const navyW = 78;
       setFill(NAVY);
-      doc.rect(0, fy, 55, FOOTER_H, 'F');
-      // text on yellow
-      setColor(NAVY);
+      doc.rect(0, fy, navyW, FOOTER_H, 'F');
+
+      // White text on navy — clinic name
+      setColor(WHITE);
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(7.5);
-      doc.text('DUNWELL YOUTH PRIORITY CLINIC', M, fy + 5.5);
-      setColor([60, 60, 60]);
+      doc.setFontSize(7);
+      doc.text('DUNWELL YOUTH PRIORITY CLINIC', 5, fy + 5.5);
+
+      // White text on navy — confidential label
       doc.setFont('helvetica', 'normal');
-      doc.text('CONFIDENTIAL DOCUMENT', M, fy + 9.5);
-      // page number on navy block, right-aligned in yellow
+      doc.setFontSize(6.5);
+      doc.text('CONFIDENTIAL DOCUMENT', 5, fy + 10);
+
+      // Page number on yellow — navy text, right-aligned
       setColor(NAVY);
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(8);
-      doc.text(`${pageNum}`, PW - M, fy + 7.5, { align: 'right' });
+      doc.text(`${pageNum}`, PW - 8, fy + 8.5, { align: 'right' });
     };
 
     // ── Header (runs on every page) ───────────────────────────────────────────
     const header = () => {
-      const HEADER_H = 32;
-
       // Navy background bar
       setFill(NAVY);
       doc.rect(0, 0, PW, HEADER_H, 'F');
@@ -131,8 +135,8 @@ export function PdfGenerator({ session, type }: PdfGeneratorProps) {
 
     // ── Section heading ───────────────────────────────────────────────────────
     const section = (text: string) => {
-      needPage(14);
-      // navy pill background
+      // Ensure section header + at least one line of content fit before starting
+      needPage(22);
       setFill(NAVY);
       doc.roundedRect(M, Y, BODY_W, 7.5, 1.5, 1.5, 'F');
       setColor(WHITE);
@@ -145,7 +149,7 @@ export function PdfGenerator({ session, type }: PdfGeneratorProps) {
 
     // ── Body text helpers ─────────────────────────────────────────────────────
     const line = (text: string, size = 9.5, bold = false, indent = 0) => {
-      needPage(size * 0.5 + 3);
+      needPage(size * 0.6 + 4);
       doc.setFont('helvetica', bold ? 'bold' : 'normal');
       doc.setFontSize(size);
       setColor(DARK);
@@ -159,7 +163,7 @@ export function PdfGenerator({ session, type }: PdfGeneratorProps) {
       setColor(DARK);
       const lines = doc.splitTextToSize(text, BODY_W - indent);
       lines.forEach((l: string) => {
-        needPage(size * 0.5 + 2);
+        needPage(size * 0.6 + 3);
         doc.text(l, M + indent, Y);
         Y += size * 0.45 + 1.2;
       });
@@ -178,7 +182,7 @@ export function PdfGenerator({ session, type }: PdfGeneratorProps) {
       x: number = M,
       w: number = 78
     ) => {
-      needPage(40);
+      needPage(44);
       // label
       setColor(NAVY);
       doc.setFont('helvetica', 'bold');
@@ -209,9 +213,16 @@ export function PdfGenerator({ session, type }: PdfGeneratorProps) {
         Y += 5;
       }
       if (sigDate) {
+        // Parse the date — could be ISO string or "YYYY-MM-DD"
+        let parsedDate: Date;
+        try {
+          parsedDate = new Date(sigDate);
+        } catch {
+          parsedDate = new Date();
+        }
         setColor(NAVY);
         doc.setFont('helvetica', 'bold');
-        doc.text(`Date: ${format(new Date(sigDate), 'dd MMMM yyyy, HH:mm')}`, x, Y);
+        doc.text(`Date: ${format(parsedDate, 'dd MMMM yyyy')}`, x, Y);
         setColor(DARK);
         doc.setFont('helvetica', 'normal');
       } else {
@@ -225,7 +236,7 @@ export function PdfGenerator({ session, type }: PdfGeneratorProps) {
       leftLabel: string, leftSig?: string | null, leftDate?: string | null, leftName?: string | null,
       rightLabel: string = '', rightSig?: string | null, rightDate?: string | null, rightName?: string | null
     ) => {
-      needPage(50);
+      needPage(54);
       const half = (BODY_W - 10) / 2;
       const savedY = Y;
       sigBlock(leftLabel,  leftSig,  leftDate,  leftName,  M,          half);
@@ -236,12 +247,20 @@ export function PdfGenerator({ session, type }: PdfGeneratorProps) {
     };
 
     // ── "Signed at" line ──────────────────────────────────────────────────────
+    // Uses the letter date selected for the contract, not the signature timestamp
     const signedAtLine = () => {
-      const sd = session.employeeSignedAt ? new Date(session.employeeSignedAt) : null;
+      const letterDateStr = session.letterDate;
+      let sd: Date | null = null;
+      if (letterDateStr) {
+        try {
+          // Parse as local date to avoid UTC timezone shift
+          sd = new Date(`${letterDateStr}T12:00:00`);
+        } catch {}
+      }
       const day   = sd ? format(sd, 'd')    : '_______';
       const month = sd ? format(sd, 'MMMM') : '______________';
       const year  = sd ? format(sd, 'yyyy') : '202____';
-      const loc   = safe(session.placeOfWork) !== '____________________' ? safe(session.placeOfWork) : 'Johannesburg';
+      const loc   = safe(session.placeOfWork) !== '____________________' ? safe(session.placeOfWork) : 'Dunwell Clinic';
       para(`Signed at ${loc} on this ${day} day of ${month} ${year}.`, 9.5);
     };
 
@@ -380,13 +399,13 @@ export function PdfGenerator({ session, type }: PdfGeneratorProps) {
       gap(12);
 
       // ─── Recommended / Approved signatures ──────────────────────────────────
-      needPage(60);
+      needPage(65);
       setColor(NAVY);
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(9);
       doc.text('RECOMMENDED:', M, Y);
       Y += 6;
-      sigBlock('Project Manager', session.projectManagerSignature, session.projectManagerSignedAt, undefined, M, 80);
+      sigBlock('Project Manager', session.projectManagerSignature, session.projectManagerSignedAt, (session as any).projectManagerName || undefined, M, 80);
       gap(4);
       setColor(NAVY);
       doc.setFont('helvetica', 'bold');
@@ -399,7 +418,7 @@ export function PdfGenerator({ session, type }: PdfGeneratorProps) {
       // ─── Acceptance page ─────────────────────────────────────────────────────
       doc.addPage();
       pageNum++;
-      Y = M;
+      Y = HEADER_H + 10;
       header();
 
       // Acceptance banner
@@ -415,7 +434,7 @@ export function PdfGenerator({ session, type }: PdfGeneratorProps) {
       para('I hereby accept and understand the conditions of employment as set out in this offer of fixed term employment. I confirm and accept that the contents of this letter have been explained to me, that the contents are fair and reasonable and agree to abide by the terms of this offer.');
       gap(6);
 
-      // Signing date line
+      // Signing date line — uses the letter date
       setColor(GREY);
       doc.setFont('helvetica', 'italic');
       doc.setFontSize(9.5);
@@ -493,7 +512,7 @@ export function PdfGenerator({ session, type }: PdfGeneratorProps) {
       para('I agree by signing below that I understand and agree to the terms and conditions of this offer extended by (Dunwell Executive Healthcare and Wellness) and no other terms apply. I agree that (Dunwell Executive Healthcare and Wellness) has made no other promises other than what is outlined in this offer letter. It contains the entire offer the DEHW is making me. Any changes in the terms of my employment, including benefits, must be authorized by the CEO & COO of the company.');
       gap(8);
 
-      // Signing date
+      // Signing date — uses the letter date
       setColor(GREY);
       doc.setFont('helvetica', 'italic');
       doc.setFontSize(9.5);
@@ -502,19 +521,20 @@ export function PdfGenerator({ session, type }: PdfGeneratorProps) {
       doc.setFont('helvetica', 'normal');
       gap(4);
 
-      sigBlock('Employee Signature', session.employeeSignature, session.employeeSignedAt, undefined, M, 80);
+      sigBlock('Employee Signature', session.employeeSignature, session.employeeSignedAt, safe(session.employeeName), M, 80);
       gap(6);
 
       section('ACKNOWLEDGEMENT OF JOB DESCRIPTION');
       para('I have read the job description for the position offered to me and agree to its contents. I acknowledge that any other duties may be requested of me that are not specially stated here. I agree to perform these duties as directed by my immediate supervisor(s) when called upon.');
       gap(8);
 
-      sigBlock('Employee Signature', session.employeeSignature, session.employeeSignedAt, undefined, M, 80);
+      sigBlock('Employee Signature', session.employeeSignature, session.employeeSignedAt, safe(session.employeeName), M, 80);
       gap(6);
 
       section('AGREEMENT FROM DUNWELL EXECUTIVE HEALTHCARE & WELLNESS');
       gap(4);
-      sigBlock('Company Signature', session.companySignature, session.companySignedAt, undefined, M, 80);
+      // Company signature uses the Director's signature
+      sigBlock('Director Signature', session.directorSignature, session.directorSignedAt, undefined, M, 80);
 
       footer();
     }
@@ -526,17 +546,11 @@ export function PdfGenerator({ session, type }: PdfGeneratorProps) {
   return (
     <Button
       onClick={generatePdf}
-      className={isEmploymentContract
-        ? 'w-full font-semibold shadow-sm hover:shadow transition-all text-white'
-        : 'w-full font-semibold shadow-sm hover:shadow transition-all'
-      }
-      style={isEmploymentContract
-        ? { background: 'linear-gradient(135deg, #0d2350 0%, #1a3a7c 100%)', color: '#fff' }
-        : { background: 'linear-gradient(135deg, #F5C518 0%, #e3b200 100%)', color: '#0d2350' }
-      }
+      variant="outline"
+      className="w-full border-slate-200 text-[#2b3e50] hover:bg-slate-50 hover:text-primary gap-2"
     >
-      <Download className="w-4 h-4 mr-2" />
-      {isEmploymentContract ? 'Download Employment Contract' : 'Download Formal Offer'}
+      <Download className="w-4 h-4" />
+      Download {isEmploymentContract ? 'Employment Contract' : 'Formal Offer'} PDF
     </Button>
   );
 }

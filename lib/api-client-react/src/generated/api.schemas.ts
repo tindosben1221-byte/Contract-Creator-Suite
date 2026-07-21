@@ -70,6 +70,8 @@ export interface Session {
   /** @nullable */
   projectManagerSignedAt?: string | null;
   /** @nullable */
+  projectManagerName?: string | null;
+  /** @nullable */
   directorSignature?: string | null;
   /** @nullable */
   directorSignedAt?: string | null;

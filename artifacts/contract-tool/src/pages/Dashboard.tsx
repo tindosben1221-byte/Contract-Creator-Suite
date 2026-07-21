@@ -7,11 +7,12 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Link, useLocation } from 'wouter';
 import { format } from 'date-fns';
-import { Plus, Search, CheckCircle2, Clock, FileEdit, Building, UserPlus, FileText, ChevronRight, ArrowLeft } from 'lucide-react';
+import { Plus, Search, CheckCircle2, Clock, FileEdit, Building, UserPlus, FileText, ChevronRight, ArrowLeft, Trash2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useListSessions, useCreateSession, getListSessionsQueryKey } from '@workspace/api-client-react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Textarea } from '@/components/ui/textarea';
 
 export default function Dashboard() {
@@ -22,6 +23,18 @@ export default function Dashboard() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [step, setStep] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
+  const [deleteToken, setDeleteToken] = useState<string | null>(null);
+
+  const deleteSession = useMutation({
+    mutationFn: async (shareToken: string) => {
+      const res = await fetch(`/api/sessions/${shareToken}`, { method: 'DELETE' });
+      if (!res.ok && res.status !== 204) throw new Error('Failed to delete');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: getListSessionsQueryKey() });
+      setDeleteToken(null);
+    },
+  });
 
   // New Employee Form State
   const [formData, setFormData] = useState({
@@ -246,6 +259,14 @@ export default function Dashboard() {
                         Open Workspace
                       </Button>
                     </Link>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="border-slate-200 text-red-400 hover:text-red-600 hover:bg-red-50 hover:border-red-200 shrink-0"
+                      onClick={() => setDeleteToken(session.shareToken!)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
                   </div>
                 </Card>
               ))}
@@ -253,6 +274,27 @@ export default function Dashboard() {
           )}
         </div>
       </main>
+
+      {/* Delete confirmation */}
+      <AlertDialog open={!!deleteToken} onOpenChange={(open) => { if (!open) setDeleteToken(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete contract?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove this employee's contract and all signatures. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700 text-white"
+              onClick={() => deleteToken && deleteSession.mutate(deleteToken)}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
         <DialogContent className="sm:max-w-[500px] p-0 flex flex-col" style={{ maxHeight: '88vh' }}>

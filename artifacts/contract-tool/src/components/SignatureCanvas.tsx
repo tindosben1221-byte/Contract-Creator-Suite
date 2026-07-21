@@ -9,7 +9,7 @@ import { format } from 'date-fns';
 interface SignatureCanvasProps {
   label: string;
   role: string;
-  onSign: (dataUrl: string, name?: string) => void;
+  onSign: (dataUrl: string, name?: string, signedAt?: string) => void;
   existingSignature?: string | null;
   existingDate?: string | null;
   requireName?: boolean;
@@ -29,6 +29,13 @@ export function SignatureCanvas({
   const [pad, setPad] = useState<SignaturePad | null>(null);
   const [nameInput, setNameInput] = useState(signerName || '');
   const [isSigned, setIsSigned] = useState(!!existingSignature);
+
+  // Default date input to today in YYYY-MM-DD format
+  const todayStr = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+  const [dateInput, setDateInput] = useState(todayStr);
 
   useEffect(() => {
     setIsSigned(!!existingSignature);
@@ -76,7 +83,11 @@ export function SignatureCanvas({
         return;
       }
       const dataUrl = pad.toDataURL('image/png');
-      onSign(dataUrl, requireName ? nameInput : undefined);
+      // Convert the entered date to an ISO string at noon to avoid timezone drift
+      const signedAt = dateInput
+        ? new Date(`${dateInput}T12:00:00`).toISOString()
+        : new Date().toISOString();
+      onSign(dataUrl, requireName ? nameInput : undefined, signedAt);
       setIsSigned(true);
     }
   };
@@ -86,7 +97,7 @@ export function SignatureCanvas({
   };
 
   if (isSigned && existingSignature) {
-    const formattedDate = existingDate ? format(new Date(existingDate), "dd MMM yyyy, HH:mm") : '';
+    const formattedDate = existingDate ? format(new Date(existingDate), "dd MMM yyyy") : '';
 
     return (
       <div className="border border-slate-200 rounded-lg p-4 bg-white shadow-sm flex flex-col items-center group relative overflow-hidden transition-all hover:border-slate-300">
@@ -95,7 +106,7 @@ export function SignatureCanvas({
           <img src={existingSignature} alt={`${label} signature`} className="w-full object-contain max-h-24 mix-blend-multiply" />
         </div>
         <div className="w-full flex flex-col items-center text-xs text-slate-500 space-y-1">
-          {requireName && existingDate && (
+          {requireName && signerName && (
             <p className="font-medium text-slate-800">{signerName}</p>
           )}
           <div className="flex items-center text-primary font-medium">
@@ -131,6 +142,16 @@ export function SignatureCanvas({
           />
         </div>
       )}
+
+      <div className="space-y-1">
+        <Label className="text-xs">Signature Date</Label>
+        <Input
+          type="date"
+          value={dateInput}
+          onChange={(e) => setDateInput(e.target.value)}
+          className="h-8 text-sm focus-visible:ring-primary"
+        />
+      </div>
       
       <div className="relative border-2 border-dashed border-[#0ABFBC]/40 hover:border-[#0ABFBC] transition-colors bg-slate-50/50 rounded-md group overflow-hidden">
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-20">

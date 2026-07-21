@@ -44,7 +44,8 @@ export default function SessionWorkspace() {
     monthlySalary: '',
     supervisor: '',
     employmentStatus: '',
-    placeOfWork: ''
+    placeOfWork: '',
+    projectManagerName: '',
   });
 
   const [savingState, setSavingState] = useState<'idle' | 'saving' | 'saved'>('idle');
@@ -64,7 +65,8 @@ export default function SessionWorkspace() {
         monthlySalary: session.monthlySalary || '',
         supervisor: session.supervisor || '',
         employmentStatus: session.employmentStatus || '',
-        placeOfWork: session.placeOfWork || ''
+        placeOfWork: session.placeOfWork || '',
+        projectManagerName: (session as any).projectManagerName || '',
       };
       setFormData(initialData);
       lastSavedData.current = initialData;
@@ -137,14 +139,14 @@ export default function SessionWorkspace() {
     setTimeout(() => setCopySuccess(false), 2000);
   };
 
-  const onSign = (role: string) => (signatureData: string, signerName?: string) => {
+  const onSign = (role: string) => (signatureData: string, signerName?: string, signedAt?: string) => {
     saveSignature.mutate(
       {
         id: token,
         data: {
           role: role as any,
           signatureData,
-          signedAt: new Date().toISOString(),
+          signedAt: signedAt || new Date().toISOString(),
           signerName
         }
       },
@@ -293,6 +295,10 @@ export default function SessionWorkspace() {
                     <div className="space-y-2">
                       <Label>Place of Work</Label>
                       <Input name="placeOfWork" value={formData.placeOfWork} onChange={handleChange} onBlur={() => handleBlur('placeOfWork')} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Project Manager Name</Label>
+                      <Input name="projectManagerName" value={formData.projectManagerName} onChange={handleChange} onBlur={() => handleBlur('projectManagerName')} placeholder="PM full name (appears under their signature)" />
                     </div>
                   </div>
 
@@ -590,6 +596,8 @@ export default function SessionWorkspace() {
                 <SignatureCanvas 
                   label="Project Manager" 
                   role="project_manager"
+                  requireName={true}
+                  signerName={(session as any).projectManagerName}
                   onSign={onSign('project_manager')}
                   existingSignature={session.projectManagerSignature}
                   existingDate={session.projectManagerSignedAt}

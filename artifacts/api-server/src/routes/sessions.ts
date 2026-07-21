@@ -119,6 +119,25 @@ router.patch("/sessions/:id", async (req, res) => {
   }
 });
 
+// Delete a session by shareToken
+router.delete("/sessions/:id", async (req, res) => {
+  try {
+    const [existing] = await db
+      .select()
+      .from(sessionsTable)
+      .where(eq(sessionsTable.shareToken, req.params.id));
+    if (!existing) {
+      res.status(404).json({ error: "Session not found" });
+      return;
+    }
+    await db.delete(sessionsTable).where(eq(sessionsTable.shareToken, req.params.id));
+    res.status(204).end();
+  } catch (err) {
+    req.log.error({ err }, "Failed to delete session");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // Save a signature for a session
 router.post("/sessions/:id/signatures", async (req, res) => {
   const parsed = SaveSignatureBody.safeParse(req.body);
@@ -147,6 +166,7 @@ router.post("/sessions/:id/signatures", async (req, res) => {
     } else if (role === "project_manager") {
       updates.projectManagerSignature = signatureData;
       updates.projectManagerSignedAt = signedAt;
+      if (signerName) updates.projectManagerName = signerName;
     } else if (role === "director") {
       updates.directorSignature = signatureData;
       updates.directorSignedAt = signedAt;

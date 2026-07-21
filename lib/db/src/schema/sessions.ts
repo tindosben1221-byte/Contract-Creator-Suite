@@ -24,6 +24,7 @@ export const sessionsTable = pgTable("sessions", {
   witnessSignedAt: text("witness_signed_at"),
   projectManagerSignature: text("project_manager_signature"),
   projectManagerSignedAt: text("project_manager_signed_at"),
+  projectManagerName: text("project_manager_name"),
   directorSignature: text("director_signature"),
   directorSignedAt: text("director_signed_at"),
   companySignature: text("company_signature"),
